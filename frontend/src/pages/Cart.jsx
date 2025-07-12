@@ -1,65 +1,148 @@
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import { ShoppingBagIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 const Cart = () => {
+  const [cartItems, setCartItems] = useState([]);
+  const [subtotal, setSubtotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchCart = async () => {
+      try {
+        const res = await axios.get("http://127.0.0.1:8000/cart/", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        });
+        setCartItems(res.data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to fetch cart", err);
+      }
+    };
+    fetchCart();
+  }, [navigate]);
+
+  useEffect(() => {
+    const total = cartItems.reduce(
+      (sum, item) =>
+        sum + item.qty * parseFloat(item.product.product_price || 0),
+      0
+    );
+    setSubtotal(total);
+  }, [cartItems]);
+
+  const handleRemove = async (cart_id) => {
+    try {
+      const token = localStorage.getItem("access_token");
+      await axios.delete(`http://127.0.0.1:8000/cart/${cart_id}/delete/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCartItems((prev) => prev.filter((item) => item.cart_id !== cart_id));
+    } catch (err) {
+      console.error("Failed to remove item", err);
+    }
+  };
+
+  const handleQtyChange = async (cart_id, newQty) => {
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await axios.put(
+        `http://127.0.0.1:8000/cart/${cart_id}/`,
+        { qty: newQty },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setCartItems((prev) =>
+        prev.map((item) => (item.cart_id === cart_id ? res.data : item))
+      );
+    } catch (err) {
+      console.error("Failed to update quantity", err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <p>Loading cart...</p>
+      </div>
+    );
+  }
+
+  if (cartItems.length === 0) {
+    return (
+      <div className="bg-white py-12 px-4 sm:px-6 lg:px-20 lg:py-16">
+        <div className="max-w-4xl mx-auto text-center">
+          <ShoppingBagIcon className="mx-auto h-12 w-12 text-gray-400" />
+          <p className="mt-4 text-gray-600">Your cart is empty.</p>
+          <Link
+            to="/products"
+            className="mt-6 inline-block text-indigo-600 hover:underline"
+          >
+            Continue Shopping
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white py-12 px-4 sm:px-6 lg:px-20 lg:py-16">
       <div className="max-w-4xl mx-auto">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Shopping Cart</h2>
 
         <ul className="divide-y divide-gray-200 mb-8">
-          <li className="flex items-center py-6">
-            <img
-              src="https://via.placeholder.com/100x100.png?text=Product"
-              alt="Product Name"
-              className="h-24 w-24 rounded object-cover"
-            />
-            <div className="flex-1 ml-6">
-              <h3 className="text-lg font-medium text-gray-900">
-                Product Name
-              </h3>
-              <div className="mt-1">
-                <label className="text-sm text-gray-500 mr-2">Qty:</label>
-                <select className="border rounded px-2 py-1">
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                </select>
+          {cartItems.map((item) => (
+            <li key={item.cart_id} className="flex items-center py-6">
+              <img
+                src={
+                  item.product.image
+                    ? `http://127.0.0.1:8000${item.product.image}`
+                    : "https://via.placeholder.com/100x100.png?text=No+Image"
+                }
+                alt={item.product.product_name}
+                className="h-24 w-24 rounded object-cover"
+              />
+              <div className="flex-1 ml-6">
+                <h3 className="text-lg font-medium text-gray-900">
+                  {item.product.product_name}
+                </h3>
+                <div className="mt-1">
+                  <label className="text-sm text-gray-500 mr-2">Qty:</label>
+                  <select
+                    value={item.qty}
+                    onChange={(e) =>
+                      handleQtyChange(
+                        item.cart_id,
+                        parseInt(e.target.value) || 1
+                      )
+                    }
+                    className="border rounded px-2 py-1"
+                  >
+                    {[...Array(item.product.countInStock).keys()].map((x) => (
+                      <option key={x + 1} value={x + 1}>
+                        {x + 1}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-sm text-gray-900 mt-2 font-semibold">
+                  ₱
+                  {(
+                    item.qty * parseFloat(item.product.product_price || 0)
+                  ).toFixed(2)}
+                </p>
               </div>
-              <p className="text-sm text-gray-900 mt-2 font-semibold">
-                ₱1,999.99
-              </p>
-            </div>
-            <button className="text-gray-400 hover:text-red-600 ml-4">
-              <XMarkIcon className="h-6 w-6" />
-            </button>
-          </li>
-
-          <li className="flex items-center py-6">
-            <img
-              src="https://via.placeholder.com/100x100.png?text=Product"
-              alt="Product Name"
-              className="h-24 w-24 rounded object-cover"
-            />
-            <div className="flex-1 ml-6">
-              <h3 className="text-lg font-medium text-gray-900">
-                Another Product
-              </h3>
-              <div className="mt-1">
-                <label className="text-sm text-gray-500 mr-2">Qty:</label>
-                <select className="border rounded px-2 py-1">
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                </select>
-              </div>
-              <p className="text-sm text-gray-900 mt-2 font-semibold">
-                ₱2,499.99
-              </p>
-            </div>
-            <button className="text-gray-400 hover:text-red-600 ml-4">
-              <XMarkIcon className="h-6 w-6" />
-            </button>
-          </li>
+              <button
+                onClick={() => handleRemove(item.cart_id)}
+                className="text-gray-400 hover:text-red-600 ml-4"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </li>
+          ))}
         </ul>
 
         <div className="bg-gray-50 rounded-lg shadow-md p-6">
@@ -69,16 +152,19 @@ const Cart = () => {
           <div className="space-y-2 text-gray-700 text-sm">
             <div className="flex justify-between">
               <span>Subtotal</span>
-              <span>₱4,499.98</span>
+              <span>₱{subtotal.toFixed(2)}</span>
             </div>
             <hr className="my-2" />
             <div className="flex justify-between font-bold text-base">
               <span>Total</span>
-              <span>₱4,499.98</span>
+              <span>₱{subtotal.toFixed(2)}</span>
             </div>
           </div>
 
-          <button className="w-full mt-6 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 text-base font-medium">
+          <button
+            onClick={() => navigate("/checkout")}
+            className="w-full mt-6 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 text-base font-medium"
+          >
             Checkout
           </button>
         </div>

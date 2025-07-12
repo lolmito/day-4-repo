@@ -14,23 +14,44 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ProductDetails from "./pages/ProductDetails";
 
+import { AuthProvider } from "./context/AuthProvider";
+import PrivateRoute from "./component/PrivateRoute";
+
+AuthProvider;
+
 function App() {
   return (
     <>
       <Router>
-        <Header />
+        <AuthProvider>
+          <Header />
 
-        <Routes>
-          <Route path="/" element={<Home />} />
+          <Routes>
+            <Route path="/" element={<Home />} />
 
-          <Route path="/product/:product_id" element={<ProductDetails />} />
+            <Route path="/product/:product_id" element={<ProductDetails />} />
 
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-        </Routes>
-        <Footer />
+            <Route
+              path="/profile"
+              element={
+                <PrivateRoute>
+                  <Profile />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/cart"
+              element={
+                <PrivateRoute>
+                  <Cart />
+                </PrivateRoute>
+              }
+            />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+          </Routes>
+          <Footer />
+        </AuthProvider>
       </Router>
     </>
   );

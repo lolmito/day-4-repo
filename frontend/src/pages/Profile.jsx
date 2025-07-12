@@ -1,25 +1,84 @@
-import React from "react";
+// src/components/Profile.jsx
+import React, { useEffect, useState, useContext } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import axios from "axios";
+import { AuthContext } from "../context/AuthProvider";
 
 const Profile = () => {
+  const [user, setUser] = useState({ username: "", email: "" });
+  const { setIsAuthenticated } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+        const res = await axios.get("http://127.0.0.1:8000/profile/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUser({
+          username: res.data.username,
+          email: res.data.email,
+        });
+      } catch (err) {
+        console.error("Failed to fetch profile", err);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const handleLogout = async () => {
+    const access = localStorage.getItem("access_token");
+    const refresh = localStorage.getItem("refresh_token");
+
+    try {
+      await axios.post(
+        "http://127.0.0.1:8000/logout/",
+        JSON.stringify({ refresh }),
+        {
+          headers: {
+            Authorization: `Bearer ${access}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      // clear tokens & auth state regardless of outcome
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      setIsAuthenticated(false);
+      navigate("/login", { replace: true });
+    } catch (err) {
+      console.error("Logout error", err);
+    }
+  };
+
   return (
     <div className="bg-gray-50 min-h-screen py-12">
       <div className="max-w-5xl mx-auto bg-white shadow-lg rounded-lg p-8">
+        {/* Header with Logout */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-          <button className="text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded">
+          <button
+            onClick={handleLogout}
+            className="text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded"
+          >
             Logout
           </button>
         </div>
 
+        {/* User Info */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <p className="text-lg text-gray-700">
-            <span className="font-medium">Username:</span> username_here
+            <span className="font-medium">Username:</span>{" "}
+            {user.username || "Loading..."}
           </p>
           <p className="text-lg text-gray-700">
-            <span className="font-medium">Email:</span> email_here@example.com
+            <span className="font-medium">Email:</span>{" "}
+            {user.email || "Loading..."}
           </p>
         </div>
 
+        {/* Purchase History (static placeholder) */}
         <div>
           <h2 className="text-2xl font-semibold text-gray-800 mb-4">
             Purchase History
@@ -55,14 +114,16 @@ const Profile = () => {
                     />
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
-                    order_id_here
+                    order id here
                   </td>
-                  <td className="px-6 py-4 text-sm text-blue-600 hover:underline">
-                    product name here
+                  <td className="px-6 py-4 text-sm">
+                    <Link to="#" className="text-blue-600 hover:underline">
+                      product name here
+                    </Link>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">date_here</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">date here</td>
                   <td className="px-6 py-4 text-sm text-gray-700">
-                    amount_here
+                    amount here
                   </td>
                 </tr>
               </tbody>
