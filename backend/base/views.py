@@ -1,13 +1,19 @@
 from django.shortcuts import get_object_or_404
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 
-#models
-from .models import Product
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
 
-#serializer
-from .serializers import ProductSerializer, RegisterSerializer 
+from .models import Product, CartUser
+from .serializers import (
+    ProductSerializer,
+    RegisterSerializer,
+    UserSerializer,
+    CartItemSerializer,
+)
+
 
 @api_view(['GET'])
 def get_products(request):
@@ -31,3 +37,68 @@ def register_user(request):
         return Response({'message': 'User Registered Successfully'}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['POST'])
+def logout_user(request):
+    refresh_token = request.data.get('refresh')
+    if not refresh_token:
+        return Response({'error': 'Refresh token is required'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        token = RefreshToken(refresh_token)
+        token.blacklist()
+        return Response({'error': 'Logged out successfully'}, status=status.HTTP_205_RESET_CONTENT)
+    except Exception:
+        return Response({'error': 'Invalid Refresh token'}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def profile_view(request):
+    serializer = UserSerializer(request.user)
+    return Response(serializer.data)
+
+# Cart ==============================================
+
+# Read
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_cart_items(request):
+    items = CartUser.objects.filter(user=request.user)
+    serializer = CartItemSerializer(items, many=True)
+    return Response(serializer.data)
+
+
+#Create
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_to_cart(request):
+    serializer = CartItemSerializer(data=request.data)
+    if serializer.is_valid():
+        product = serializer.validated_data['product']
+        qty = serializer.validated_data['qty']
+        cart_item, created = CartUser.objects.get_or_create(
+            user=request.user,
+            product=product,
+            defaults={'qty':qty}
+        )
+        if not created:
+            cart_item.qty += qty
+            cart_item.save()
+        return Response(CartItemSerializer(cart_item).data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# update
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_cart_items(request, cart_id):
+    cart_item = get_object_or_404(CartUser, pk=cart_id, user=request.user)
+    serializer = CartItemSerializer(cart_item, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+#delete
+@api_view(['DELETE'])
+def remove_cart_item(request, cart_id):
+    cart_item = get_object_or_404(CartUser, pk=cart_id, user=request.user)
+    cart_item.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
