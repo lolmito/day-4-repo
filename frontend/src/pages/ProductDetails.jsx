@@ -102,7 +102,7 @@ const ProductDetails = () => {
           <div className="lg:col-span-2 w-full">
             {productDetail.image ? (
               <img
-                src={`${BASE_URL}${productDetail.image}`}
+                src={`http://147.93.107.162:8005${productDetail.image}`}
                 alt={productDetail.product_name}
                 className="w-full rounded-lg object-cover"
               />
