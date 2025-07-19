@@ -2,23 +2,25 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ShoppingBagIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { BASE_URL } from "../api/AuthApi";
+import Loading from "../component/Loading";
 
 const Cart = () => {
   const [cartItems, setCartItems] = useState([]);
   const [subtotal, setSubtotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCart = async () => {
       try {
-        const res = await axios.get("http://127.0.0.1:8000/cart/", {
+        const res = await axios.get(`${BASE_URL}cart/`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("access_token")}`,
           },
         });
         setCartItems(res.data);
-        setLoading(false);
+        setIsLoading(false);
       } catch (err) {
         console.error("Failed to fetch cart", err);
       }
@@ -38,7 +40,7 @@ const Cart = () => {
   const handleRemove = async (cart_id) => {
     try {
       const token = localStorage.getItem("access_token");
-      await axios.delete(`http://127.0.0.1:8000/cart/${cart_id}/delete/`, {
+      await axios.delete(`${BASE_URL}cart/${cart_id}/delete/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCartItems((prev) => prev.filter((item) => item.cart_id !== cart_id));
@@ -51,7 +53,7 @@ const Cart = () => {
     try {
       const token = localStorage.getItem("access_token");
       const res = await axios.put(
-        `http://127.0.0.1:8000/cart/${cart_id}/`,
+        `${BASE_URL}cart/${cart_id}/`,
         { qty: newQty },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -63,11 +65,11 @@ const Cart = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="text-center py-12">
-        <p>Loading cart...</p>
-      </div>
+      <>
+        <Loading />
+      </>
     );
   }
 

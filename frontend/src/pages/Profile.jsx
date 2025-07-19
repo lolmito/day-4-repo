@@ -3,23 +3,27 @@ import React, { useEffect, useState, useContext } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { AuthContext } from "../context/AuthProvider";
+import { BASE_URL } from "../api/AuthApi";
+import Loading from "../component/Loading";
 
 const Profile = () => {
   const [user, setUser] = useState({ username: "", email: "" });
   const { setIsAuthenticated } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("access_token");
-        const res = await axios.get("http://127.0.0.1:8000/profile/", {
+        const res = await axios.get(`${BASE_URL}profile/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser({
           username: res.data.username,
           email: res.data.email,
         });
+        setIsLoading(false);
       } catch (err) {
         console.error("Failed to fetch profile", err);
       }
@@ -30,7 +34,7 @@ const Profile = () => {
   const handleLogout = async () => {
     const access = localStorage.getItem("access_token");
     const refresh = localStorage.getItem("refresh_token");
-
+    setIsLoading(true);
     try {
       await axios.post(
         "http://127.0.0.1:8000/logout/",
@@ -45,13 +49,26 @@ const Profile = () => {
       // clear tokens & auth state regardless of outcome
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
-      setIsAuthenticated(false);
       navigate("/login", { replace: true });
     } catch (err) {
       console.error("Logout error", err);
     }
+    finally {
+      // Always clear tokens and redirect regardless of outcome
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      setIsAuthenticated(false); // Assuming this should be reset
+      setIsLoading(false); // Optional, but might help if redirection fails
+      navigate("/login", { replace: true });
+    }
   };
-
+  if (isLoading) {
+    return (
+      <>
+        <Loading />
+      </>
+    );
+  }
   return (
     <div className="bg-gray-50 min-h-screen py-12">
       <div className="max-w-5xl mx-auto bg-white shadow-lg rounded-lg p-8">
